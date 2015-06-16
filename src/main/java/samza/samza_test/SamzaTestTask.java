@@ -96,12 +96,13 @@ public class SamzaTestTask implements StreamTask, InitableTask, WindowableTask {
 
     private void filterIP(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
         try {
-            String input = (String) envelope.getMessage();
-            String srcIP = FlowParser.getSrcIP(input);
-            String IPFilter = "194.164.3.172";
-            if (srcIP.equals(IPFilter)) {
+           // String input = (String) envelope.getMessage();
+//            String srcIP = FlowParser.getSrcIP(input);
+//            String IPFilter = "194.164.3.172";
+//            if (srcIP.equals(IPFilter)) {
+            if((totalFlows % 3) == 0){
                 filtered++;
-                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), input));
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
