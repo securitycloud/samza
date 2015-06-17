@@ -43,6 +43,7 @@ public class SamzaTestTask implements StreamTask, InitableTask, WindowableTask {
 
     //filters
     private int filtered = 0;
+    private int foo = 0;
 
 
     private static final Logger log = Logger.getLogger(SamzaTestTask.class.getName());
@@ -91,16 +92,20 @@ public class SamzaTestTask implements StreamTask, InitableTask, WindowableTask {
         // Reset counts after windowing.
         totalFlows = 0;
         filtered = 0;
+        foo = 0;
         counts = new HashMap<>();
     }
 
     private void filterIP(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
         try {
-           // String input = (String) envelope.getMessage();
-//            String srcIP = FlowParser.getSrcIP(input);
-//            String IPFilter = "194.164.3.172";
-//            if (srcIP.equals(IPFilter)) {
-            if((totalFlows % 3) == 0){
+            Map<String, Object> input = (Map<String, Object>) envelope.getMessage();
+            String srcIP = (String) input.get("src_ip_addr");
+            String IPFilter = "194.164.3.172";
+            if (srcIP.equals(IPFilter)) {
+		//do nothing, just simulate processing
+		foo++;
+            }
+            if((totalFlows % 4) == 0){
                 filtered++;
                 collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
             }
