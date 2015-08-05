@@ -36,6 +36,7 @@ import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
 import org.apache.samza.task.WindowableTask;
 import org.apache.samza.storage.kv.KeyValueStore;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 //public class SamzaTestTask implements StreamTask, InitableTask, WindowableTask {
 public class SamzaTestTask implements StreamTask, InitableTask {
@@ -43,6 +44,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     private int totalFlows = 0;
     private Map<String, Integer> counts = new HashMap<>();
     private Map<String, String> countsEnd = new HashMap<>();
+    private ObjectMapper mapper;
 
     //filters
     private int filtered = 0;
@@ -66,6 +68,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     public void init(Config config, TaskContext context) {
 	this.totalFlows = 0;
 	this.myConf = config;
+	this.mapper = new ObjectMapper();
        // this.store = (KeyValueStore<String, Integer>) context.getStore("samza-store");
         try {
             fh = new FileHandler("/tmp/statsLog.txt");
@@ -80,15 +83,28 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     @SuppressWarnings("unchecked")
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
+	totalFlows++;
+	if(totalFlows == 1_500_001){
+		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
+	}
         if (totalFlows == 1) {
 		int testNumber = myConf.getInt("securitycloud.test.number");
         	start = System.currentTimeMillis();
 		log.log(Level.INFO, "zacatek zpracovani: ",start);
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
-		collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), countsEnd));
+		
+		try{
+			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+		} catch (Exception e) {
+            		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        	}
                 countsEnd = new HashMap<>();
-        }
-        totalFlows++;
+        }  
+
+	//filterIP(envelope, collector, coordinator);
+        count(envelope, collector, coordinator);  
+    
         if (totalFlows % 500_000 == 0) {
 		currentTime = System.currentTimeMillis();
 		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + 500_000/(currentTime - start) + "k toku za vterinu");
@@ -101,10 +117,16 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		countsEnd.put("packtes", String.valueOf(packets));
 		countsEnd.put("flows", String.valueOf(flows));
 		countsEnd.put("Log:", msg);
-		collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), countsEnd));
+		try{
+			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+		} catch (Exception e) {
+            		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        	}
                 countsEnd = new HashMap<>();
         }
-      
+
+             
 /*
 	int storedValue = 0;  
 	try{
@@ -115,10 +137,6 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		store.put("totalFlows", new Integer(1));
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
         }
-*/
-        //filterIP(envelope, collector, coordinator);
-        count(envelope, collector, coordinator);
-/*
 	if(totalFlows % 1_000_000 == 0){
 		//countsEnd.put("fromDB", String.valueOf(storedValue));
 		countsEnd.put("totalFlows", String.valueOf(totalFlows));
@@ -128,12 +146,6 @@ public class SamzaTestTask implements StreamTask, InitableTask {
                 countsEnd = new HashMap<>();
 	}
 */
-	if(totalFlows == 2_000_001){
-		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
-	}
-
-        //collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
-
     }
 /*
     @Override
@@ -167,7 +179,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
             String IPFilter = "194.164.3.172";
             if (srcIP.equals(IPFilter)) {
                 filtered++;
-               // collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
@@ -175,7 +187,21 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     }
 
     private void count(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
-        try {
+	try {
+            Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
+            String dstIP = flow.getDst_ip_addr();
+            String IPFilter = "62.148.241.49";
+            if (dstIP.equals(IPFilter)) {
+                filtered++;
+                flows++;
+                bytes = bytes + flow.getBytes();
+                packets = packets + flow.getPackets();
+                //collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "wikipedia-filter"), jsonObject));
+            }
+        } catch (Exception e) {
+            Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        }
+        /*try {
             Map<String, Object> input = (Map<String, Object>) envelope.getMessage();
             String srcIP = (String) input.get("src_ip_addr");
             String IPFilter = "194.164.3.172";
@@ -188,7 +214,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
-        }
+        }*/
     }
 
     private void aggregate(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
