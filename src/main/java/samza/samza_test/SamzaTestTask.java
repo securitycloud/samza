@@ -45,6 +45,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     private Map<String, Integer> counts = new HashMap<>();
     private Map<String, String> countsEnd = new HashMap<>();
     private ObjectMapper mapper;
+    private int windowSize;
 
     //filters
     private int filtered = 0;
@@ -69,6 +70,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 	this.totalFlows = 0;
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
+	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
        // this.store = (KeyValueStore<String, Integer>) context.getStore("samza-store");
         try {
             fh = new FileHandler("/tmp/statsLog.txt");
@@ -105,9 +107,9 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 	//filterIP(envelope, collector, coordinator);
         count(envelope, collector, coordinator);  
     
-        if (totalFlows % 500_000 == 0) {
+        if (totalFlows % windowSize == 0) {
 		currentTime = System.currentTimeMillis();
-		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + 500_000/(currentTime - start) + "k toku za vterinu");
+		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu");
         	log.log(Level.INFO, msg);
 		start = currentTime;
 
@@ -120,6 +122,8 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+			myArray = mapper.writeValueAsBytes(windowSize);
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
 		} catch (Exception e) {
             		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
         	}
