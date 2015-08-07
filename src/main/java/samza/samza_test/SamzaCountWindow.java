@@ -45,11 +45,13 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     private ObjectMapper mapper;
     private Config conf;
     private int windowLimit;
+    private int packets;
    
     
     @Override
     public void init(Config config, TaskContext context) {
 	this.totalFlows = 0;
+	this.packets = 0;
 	this.mapper = new ObjectMapper();
 	this.conf = config;
 	this.windowLimit = config.getInt("securitycloud.test.windowLimit");
@@ -59,16 +61,23 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
 	try {
-        	totalFlows += (int) mapper.readValue((byte[]) envelope.getMessage(), Integer.class);
+		collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), envelope.getMessage()));
+		String input = mapper.readValue((byte[]) envelope.getMessage(), String.class);
+		String[] parts = input.split(" ");
+		totalFlows += Integer.parseInt(parts[0]);
+		packets += Integer.parseInt(parts[1]);
+		String IP = parts[2];
 		if(totalFlows == windowLimit){
-			String msg = "CountWindow se dopocital na hodnotu 4_500_000 toku :)";
+			String msg = "CountWindow se dopocital na hodnotu 4_500_000 toku :), IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu.";
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 			totalFlows = 0;
+			packets = 0;
 		}
 		if(totalFlows > windowLimit){
-			String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?";
+			String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?, IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu.";
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 			totalFlows = 0;
+			packets = 0;
 		}
 	} catch (Exception e) {
             Logger.getLogger(SamzaCountWindow.class.getName()).log(Level.SEVERE, null, e);

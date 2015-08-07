@@ -44,6 +44,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     private int totalFlows = 0;
     private Map<String, Integer> counts = new HashMap<>();
     private Map<String, String> countsEnd = new HashMap<>();
+    private Map<String, Integer> top = new HashMap<>();
     private ObjectMapper mapper;
     private int windowSize;
 
@@ -59,6 +60,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     private long bytes = 0;
     private long packets = 0;
     private long flows = 0;
+    private String IPFilter;
 
 	private Config myConf;
    // private KeyValueStore<String, Integer> store;
@@ -71,6 +73,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
+	this.IPFilter = config.get("securitycloud.test.dstIP");
        // this.store = (KeyValueStore<String, Integer>) context.getStore("samza-store");
         try {
             fh = new FileHandler("/tmp/statsLog.txt");
@@ -107,7 +110,7 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 	//filterIP(envelope, collector, coordinator);
         count(envelope, collector, coordinator);  
     
-        if (totalFlows % windowSize == 0) {
+ /*       if (totalFlows % windowSize == 0) {
 		currentTime = System.currentTimeMillis();
 		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu");
         	log.log(Level.INFO, msg);
@@ -122,14 +125,15 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
-			myArray = mapper.writeValueAsBytes(windowSize);
+			myArray = mapper.writeValueAsBytes(String.valueOf(windowSize) + " " + String.valueOf(packets) + " " + IPFilter);
+			packets = 0; // this should be part of count function NOT in process!!!
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
 		} catch (Exception e) {
             		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
         	}
                 countsEnd = new HashMap<>();
         }
-
+*/
              
 /*
 	int storedValue = 0;  
@@ -178,10 +182,9 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 */
     private void filterIP(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
         try {
-            Map<String, Object> input = (Map<String, Object>) envelope.getMessage();
-            String srcIP = (String) input.get("src_ip_addr");
-            String IPFilter = "194.164.3.172";
-            if (srcIP.equals(IPFilter)) {
+            Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
+            String dstIP = flow.getDst_ip_addr();
+            if (dstIP.equals(IPFilter)) {
                 filtered++;
                 collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-filter"), envelope.getMessage()));
             }
@@ -194,7 +197,6 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 	try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
             String dstIP = flow.getDst_ip_addr();
-            String IPFilter = "62.148.241.49";
             if (dstIP.equals(IPFilter)) {
                 filtered++;
                 flows++;
@@ -204,6 +206,30 @@ public class SamzaTestTask implements StreamTask, InitableTask {
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        }
+
+        if (totalFlows % windowSize == 0) {
+		currentTime = System.currentTimeMillis();
+		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu");
+        	log.log(Level.INFO, msg);
+		start = currentTime;
+
+		countsEnd.put("totalFlows", String.valueOf(totalFlows));
+ 	        countsEnd.put("filtered", String.valueOf(filtered));
+		countsEnd.put("bytes", String.valueOf(bytes));
+		countsEnd.put("packtes", String.valueOf(packets));
+		countsEnd.put("flows", String.valueOf(flows));
+		countsEnd.put("Log:", msg);
+		try{
+			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+			myArray = mapper.writeValueAsBytes(String.valueOf(windowSize) + " " + String.valueOf(packets) + " " + IPFilter);
+			packets = 0; // this should be part of count function NOT in process!!!
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
+		} catch (Exception e) {
+            		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        	}
+                countsEnd = new HashMap<>();
         }
         /*try {
             Map<String, Object> input = (Map<String, Object>) envelope.getMessage();
@@ -222,30 +248,39 @@ public class SamzaTestTask implements StreamTask, InitableTask {
     }
 
     private void aggregate(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
-
+	// same as top N
     }
 
     private void topN(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
-    /*    //top 10 src IP adress ordered by bytes
-        String input = "";
-        try {
-            input = (String) envelope.getMessage();
-            String srcIP = FlowParser.getSrcIP(input);
-            if (top.containsKey(srcIP)) {
-                FlowInfo record = new FlowInfo();
-                record.setBytes(top.get(srcIP).getBytes() + FlowParser.getBytes(input));
-                record.setPackets(top.get(srcIP).getPackets() + FlowParser.getPackets(input));
-                record.setFlows(top.get(srcIP).getFlows() + 1);
-                top.put(srcIP, record);
+	try {
+            Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
+            String dstIP = flow.getDst_ip_addr();
+            if (top.containsKey(dstIP)) {
+                int packetsFromMap = top.get(dstIP);
+                top.put(dstIP, packetsFromMap + flow.getPackets());
             } else {
-                FlowInfo newRecord = new FlowInfo();
-                newRecord.setBytes(FlowParser.getBytes(input));
-                newRecord.setPackets(FlowParser.getPackets(input));
-                newRecord.setFlows(1);
-                top.put(srcIP, newRecord);
+                top.put(dstIP, flow.getPackets());
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
-        }*/
+        }
+
+        if (totalFlows % windowSize == 0) {
+		currentTime = System.currentTimeMillis();
+		String msg = new String("Zpracovano " + String.valueOf(totalFlows) + " toku v case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu");
+        	log.log(Level.INFO, msg);
+		start = currentTime;
+
+		try{
+			byte[] myArray = mapper.writeValueAsBytes(msg);
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+			myArray = mapper.writeValueAsBytes(String.valueOf(windowSize) + " " + String.valueOf(packets) + " " + IPFilter);
+			packets = 0; // this should be part of count function NOT in process!!!
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
+		} catch (Exception e) {
+            		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
+        	}
+                countsEnd = new HashMap<>();
+        }
     }
 }
