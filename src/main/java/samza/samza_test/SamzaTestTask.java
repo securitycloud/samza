@@ -101,6 +101,8 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+			myArray = mapper.writeValueAsBytes("count " + String.valueOf(start) + " " + String.valueOf(0) + " " + String.valueOf(0) + " " + IPFilter);
+			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
 		} catch (Exception e) {
             		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
         	}
@@ -223,8 +225,8 @@ public class SamzaTestTask implements StreamTask, InitableTask {
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
-			myArray = mapper.writeValueAsBytes(String.valueOf(windowSize) + " " + String.valueOf(packets) + " " + IPFilter);
-			packets = 0; // this should be part of count function NOT in process!!!
+			myArray = mapper.writeValueAsBytes("count " + String.valueOf(currentTime) + " " + String.valueOf(windowSize) + " " + String.valueOf(packets) + " " + IPFilter);
+			packets = 0;
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
 		} catch (Exception e) {
             		Logger.getLogger(SamzaTestTask.class.getName()).log(Level.SEVERE, null, e);
