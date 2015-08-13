@@ -46,6 +46,7 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
     private Map<String, Integer> top = new HashMap<>();
     private ObjectMapper mapper;
     private int windowSize;
+    private int windowLimit;
 
     private static final Logger log = Logger.getLogger(SamzaTestAggregate.class.getName());
     private static Handler fh;
@@ -64,6 +65,7 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
+  this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
 	this.IPFilter = config.get("securitycloud.test.dstIP");
         try {
             fh = new FileHandler("/tmp/statsLog.txt");
@@ -79,7 +81,7 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
 	totalFlows++;
-	if(totalFlows == 1_500_001){
+	if(totalFlows == windowLimit){
 		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
 	}
         if (totalFlows == 1) {
