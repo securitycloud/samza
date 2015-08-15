@@ -121,13 +121,14 @@ public class SamzaTestScan implements StreamTask, InitableTask {
         }  */
 try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String dstIP = flow.getSrc_ip_addr();
-	    log.log(Level.INFO, "srcIP: "+dstIP);
-            if (top.containsKey(dstIP)) {
-                int packetsFromMap = top.get(dstIP);
-                top.put(dstIP, packetsFromMap + flow.getPackets());
+            String srcIP = flow.getSrc_ip_addr();
+            String flags = flow.getFlags();
+//	    log.log(Level.INFO, "srcIP: "+dstIP);
+            if (flags.equals("....S.")  && top.containsKey(srcIP)) {
+                int flowsFromMap = top.get(srcIP);
+                top.put(srcIP, flowsFromMap + 1);
             } else {
-                top.put(dstIP, flow.getPackets());
+                top.put(srcIP, 1);
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
