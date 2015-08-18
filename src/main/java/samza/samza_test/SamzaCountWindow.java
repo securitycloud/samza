@@ -89,7 +89,8 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 		log.log(Level.INFO, "Prichozi zprava: "+input);
 		String[] parts = input.split(" ");
 
-		long timestamp = Long.parseLong(parts[1]);
+		//long timestamp = Long.parseLong(parts[1]);
+    long timestamp = System.currentTimeMillis();
 		if(timestamp < timeStart){
 			timeStart = timestamp;
 		}
