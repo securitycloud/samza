@@ -24,9 +24,6 @@ import java.util.TreeMap;
 import java.util.Map;
 import java.util.Iterator;
 import java.util.Comparator;
-import java.lang.StringBuilder;
-import java.util.logging.FileHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.samza.config.Config;
@@ -38,8 +35,6 @@ import org.apache.samza.task.MessageCollector;
 import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
-import org.apache.samza.task.WindowableTask;
-import org.apache.samza.storage.kv.KeyValueStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SamzaCountWindow implements StreamTask, InitableTask {
@@ -55,9 +50,6 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     private long timeEnd;
     private long startLast;
     private int startLastFlows;
-   
-    private static final Logger log = Logger.getLogger(SamzaCountWindow.class.getName());
-    private static Handler fh;
     
     @Override
     public void init(Config config, TaskContext context) {
@@ -72,29 +64,17 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 	this.conf = config;
 	this.top = new HashMap<>();
 	this.windowLimit = config.getInt("securitycloud.test.windowLimit");
-        try {
-            fh = new FileHandler("/tmp/statsLog.txt");
-            Logger.getLogger("").addHandler(fh);
-            log.addHandler(fh);
-            log.setLevel(Level.INFO);
-        } catch (IOException | SecurityException ex) {
-            Logger.getLogger(SamzaCountWindow.class.getName()).log(Level.SEVERE, null, ex);
-        }
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
 	try {
-		//collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), envelope.getMessage()));
-		//String zprava = "Jeste porad funguju a dostal jsem zpravu. Aktualni stav totalFlows: "+String.valueOf(totalFlows)+".";
-		//collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(zprava)));
 		String input = mapper.readValue((byte[]) envelope.getMessage(), String.class);
-		log.log(Level.INFO, "Prichozi zprava: "+input);
 		String[] parts = input.split(" ");
 
-		//long timestamp = Long.parseLong(parts[1]);
-    long timestamp = System.currentTimeMillis();
+		long timestamp = Long.parseLong(parts[1]);
+    		//long timestamp = System.currentTimeMillis();
 		if(timestamp < timeStart){
 			timeStart = timestamp;
 		}
@@ -107,6 +87,41 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 			startLastFlows = totalFlows;
 		}		
 
+////////////////////////////////////////          EMPTY FRAMEWORK          //////////////////////////////////////// 
+		if(parts[0].equals("empty")){
+			totalFlows += Integer.parseInt(parts[2]);
+			if(totalFlows == windowLimit){
+				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+				cleanVars();
+			}
+			if(totalFlows > windowLimit){
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+				cleanVars();
+			}					
+		}
+
+////////////////////////////////////////          TEST FILTER          //////////////////////////////////////// 
+		if(parts[0].equals("filter")){
+			totalFlows += Integer.parseInt(parts[2]);
+			filtered += Integer.parseInt(parts[3]);
+			String IP = parts[4];
+			if(totalFlows == windowLimit){
+				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), IP adresa " + IP + " mela " + String.valueOf(filtered) +" toku. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+				cleanVars();
+			}
+			if(totalFlows > windowLimit){
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+				cleanVars();
+			}					
+		}
+
+////////////////////////////////////////          TEST COUNT          //////////////////////////////////////// 
 		if(parts[0].equals("count")){
 			totalFlows += Integer.parseInt(parts[2]);
 			packets += Integer.parseInt(parts[3]);
@@ -121,29 +136,13 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 				cleanVars();
 			}
 			if(totalFlows > windowLimit){
-				String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?, IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu.";
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}					
 		}
 
-		if(parts[0].equals("filter")){
-			totalFlows += Integer.parseInt(parts[2]);
-			filtered += Integer.parseInt(parts[3]);
-			String IP = parts[4];
-			if(totalFlows == windowLimit){
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), IP adresa " + IP + " mela " + String.valueOf(filtered) +" toku. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?, IP adresa " + IP + " mela " + String.valueOf(filtered) +" toku.";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
-
+////////////////////////////////////////          TEST AGGREGATE          //////////////////////////////////////// 
 		if(parts[0].equals("aggregate")){
 			totalFlows += Integer.parseInt(parts[2]);
 			for(String field : parts){
@@ -174,12 +173,13 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 				cleanVars();
 			}
 			if(totalFlows > windowLimit){
-				String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?";
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}					
 		}
 
+////////////////////////////////////////          TEST TOP N          //////////////////////////////////////// 
 		if(parts[0].equals("topn")){
 			totalFlows += Integer.parseInt(parts[2]);
 			for(String field : parts){
@@ -210,18 +210,22 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 					
 				}				
 
+				if(timeEnd < System.currentTimeMillis()){
+					timeEnd = System.currentTimeMillis();
+				}				
 				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
 				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis TOP 10: "+sb.toString();
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}
 			if(totalFlows > windowLimit){
-				String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?";
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}					
 		}
 
+////////////////////////////////////////          TEST SYN SCAN          //////////////////////////////////////// 
 		if(parts[0].equals("scan")){
 			totalFlows += Integer.parseInt(parts[2]);
 			for(String field : parts){
@@ -250,22 +254,25 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 					i++;
 					if(i>10) break;
 					
-				}				
-
+				}	
+			
+				if(timeEnd < System.currentTimeMillis()){
+					timeEnd = System.currentTimeMillis();
+				}
 				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
 				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis TOP 10: "+sb.toString();
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}
 			if(totalFlows > windowLimit){
-				String msg = "CountWindow ma hodnotu vetsi nez 4_500_000 toku WTF?";
+				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}					
 		}
 
 		
-	} catch (Exception e) {
+	} catch (IOException | NumberFormatException e) {
             Logger.getLogger(SamzaCountWindow.class.getName()).log(Level.SEVERE, null, e);
         }
     }
