@@ -53,6 +53,8 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     private int filtered;
     private long timeStart;
     private long timeEnd;
+    private long startLast;
+    private int startLastFlows;
    
     private static final Logger log = Logger.getLogger(SamzaCountWindow.class.getName());
     private static Handler fh;
@@ -61,6 +63,8 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     public void init(Config config, TaskContext context) {
 	this.totalFlows = 0;
 	this.packets = 0;
+	this.startLast = 0;
+	this.startLastFlows = 0;
 	this.filtered = 0;
 	this.timeStart = Long.MAX_VALUE;
 	this.timeEnd = 0;
@@ -98,6 +102,11 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 			timeEnd = timestamp;
 		}
 
+		if(Integer.parseInt(parts[2]) == 0){
+			startLast = timestamp;
+			startLastFlows = totalFlows;
+		}		
+
 		if(parts[0].equals("count")){
 			totalFlows += Integer.parseInt(parts[2]);
 			packets += Integer.parseInt(parts[3]);
@@ -105,6 +114,9 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 			if(totalFlows == windowLimit){
 				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
 				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+				speed = (windowLimit-startLastFlows)/(timeEnd-startLast);
+				msg = "Mereni od startu posledniho: , IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
 				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}
@@ -262,6 +274,8 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 	totalFlows = 0;
 	packets = 0;
 	filtered = 0;
+	startLastFlows = 0;
+	startLast = 0;
 	top = new HashMap<>();
 	this.timeStart = Long.MAX_VALUE;
 	this.timeEnd = 0;

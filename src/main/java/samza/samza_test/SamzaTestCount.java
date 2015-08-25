@@ -65,7 +65,7 @@ public class SamzaTestCount implements StreamTask, InitableTask {
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
-  this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
+        this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
 	this.IPFilter = config.get("securitycloud.test.dstIP");
         try {
             fh = new FileHandler("/tmp/statsLog.txt");
