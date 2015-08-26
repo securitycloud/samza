@@ -64,7 +64,7 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
 		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
 	}
         if (totalFlows == 1) {
-		int testNumber = myConf.getInt("securitycloud.test.number");
+		String testNumber = myConf.get("securitycloud.test.name");
         	start = System.currentTimeMillis();
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
 		
@@ -81,12 +81,12 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
 
 	try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String srcIP = flow.getSrc_ip_addr();
-            if (top.containsKey(srcIP)) {
-                int packetsFromMap = top.get(srcIP);
-                top.put(srcIP, packetsFromMap + flow.getPackets());
+            String dstIP = flow.getDst_ip_addr();
+            if (top.containsKey(dstIP)) {
+                int packetsFromMap = top.get(dstIP);
+                top.put(dstIP, packetsFromMap + flow.getPackets());
             } else {
-                top.put(srcIP, flow.getPackets());
+                top.put(dstIP, flow.getPackets());
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTopN.class.getName()).log(Level.SEVERE, null, e);

@@ -66,7 +66,7 @@ public class SamzaTestFilter implements StreamTask, InitableTask {
 		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
 	}
         if (totalFlows == 1) {
-		int testNumber = myConf.getInt("securitycloud.test.number");
+		String testNumber = myConf.get("securitycloud.test.name");
         	start = System.currentTimeMillis();
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
 		

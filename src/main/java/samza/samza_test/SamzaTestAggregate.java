@@ -55,7 +55,7 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
-  this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
+        this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
     }
 
     @SuppressWarnings("unchecked")
@@ -66,7 +66,7 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
 		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
 	}
         if (totalFlows == 1) {
-		int testNumber = myConf.getInt("securitycloud.test.number");
+		String testNumber = myConf.get("securitycloud.test.name");
         	start = System.currentTimeMillis();
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
 		

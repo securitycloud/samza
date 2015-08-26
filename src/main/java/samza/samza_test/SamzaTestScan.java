@@ -64,7 +64,7 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
 	}
         if (totalFlows == 1) {
-		int testNumber = myConf.getInt("securitycloud.test.number");
+		String testNumber = myConf.get("securitycloud.test.name");
         	start = System.currentTimeMillis();
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
 		
@@ -81,14 +81,14 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 
         try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String srcIP = flow.getSrc_ip_addr();
+            String dstIP = flow.getDst_ip_addr();
             String flags = flow.getFlags();
             if (flags.equals("....S.")){
-              if(top.containsKey(srcIP)) {
-                  int flowsFromMap = top.get(srcIP);
-                  top.put(srcIP, flowsFromMap + 1);
+              if(top.containsKey(dstIP)) {
+                  int flowsFromMap = top.get(dstIP);
+                  top.put(dstIP, flowsFromMap + 1);
               } else {
-                  top.put(srcIP, 1);
+                  top.put(dstIP, 1);
               }
             }
         } catch (Exception e) {
