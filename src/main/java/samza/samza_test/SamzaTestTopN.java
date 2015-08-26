@@ -18,11 +18,8 @@
  */
 package samza.samza_test;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.FileHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.samza.config.Config;
@@ -34,11 +31,8 @@ import org.apache.samza.task.MessageCollector;
 import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
-import org.apache.samza.task.WindowableTask;
-import org.apache.samza.storage.kv.KeyValueStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-//public class SamzaTestCount implements StreamTask, InitableTask, WindowableTask {
 public class SamzaTestTopN implements StreamTask, InitableTask {
 
     private int totalFlows = 0;
@@ -48,16 +42,10 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
     private int windowSize;
     private int windowLimit;
 
-    private static final Logger log = Logger.getLogger(SamzaTestCount.class.getName());
-    private static Handler fh;
     private Long start;
     private Long currentTime;
-    private long packets = 0;
-    private String IPFilter;
 
-    private Config myConf;
-
-    
+    private Config myConf;    
     
     @Override
     public void init(Config config, TaskContext context) {
@@ -65,16 +53,7 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
 	this.myConf = config;
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
-  this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
-	this.IPFilter = config.get("securitycloud.test.dstIP");
-        try {
-            fh = new FileHandler("/tmp/statsLog.txt");
-            Logger.getLogger("").addHandler(fh);
-            log.addHandler(fh);
-            log.setLevel(Level.INFO);
-        } catch (IOException | SecurityException ex) {
-            Logger.getLogger(SamzaTestTopN.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
     }
 
     @SuppressWarnings("unchecked")
@@ -87,7 +66,6 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
         if (totalFlows == 1) {
 		int testNumber = myConf.getInt("securitycloud.test.number");
         	start = System.currentTimeMillis();
-		log.log(Level.INFO, "zacatek zpracovani: ",start);
 		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
 		
 		try{
@@ -103,12 +81,12 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
 
 	try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String dstIP = flow.getDst_ip_addr();
-            if (top.containsKey(dstIP)) {
-                int packetsFromMap = top.get(dstIP);
-                top.put(dstIP, packetsFromMap + flow.getPackets());
+            String srcIP = flow.getSrc_ip_addr();
+            if (top.containsKey(srcIP)) {
+                int packetsFromMap = top.get(srcIP);
+                top.put(srcIP, packetsFromMap + flow.getPackets());
             } else {
-                top.put(dstIP, flow.getPackets());
+                top.put(srcIP, flow.getPackets());
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestTopN.class.getName()).log(Level.SEVERE, null, e);
@@ -116,8 +94,7 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
     
         if (totalFlows % windowSize == 0) {
 		currentTime = System.currentTimeMillis();
-		String msg = new String("V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu");
-        	log.log(Level.INFO, msg);
+		String msg = "V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu";
 		start = currentTime;
 
 		countsEnd.put("totalFlows", String.valueOf(totalFlows));

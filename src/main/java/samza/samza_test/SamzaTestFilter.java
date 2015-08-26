@@ -83,8 +83,8 @@ public class SamzaTestFilter implements StreamTask, InitableTask {
 
 	try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String dstIP = flow.getDst_ip_addr();
-            if (dstIP.equals(IPFilter)) {
+            String srcIP = flow.getSrc_ip_addr();
+            if (srcIP.equals(IPFilter)) {
                 filtered++;
             }
         } catch (Exception e) {

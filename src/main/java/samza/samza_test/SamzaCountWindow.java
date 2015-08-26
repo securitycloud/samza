@@ -163,7 +163,7 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 				StringBuilder sb = new StringBuilder();
 				while(it.hasNext()){
 					String key = it.next();
-					sb.append(key+" "+String.valueOf(top.get(key))+", ");
+					sb.append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
 				}				
 
 				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
@@ -204,7 +204,7 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 				StringBuilder sb = new StringBuilder();
 				while(it.hasNext()){
 					String key = it.next();
-					sb.append(String.valueOf(i)+" "+key+" "+String.valueOf(top.get(key))+", ");
+					sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
 					i++;
 					if(i>10) break;
 					
@@ -250,7 +250,7 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 				StringBuilder sb = new StringBuilder();
 				while(it.hasNext()){
 					String key = it.next();
-					sb.append(String.valueOf(i)+" "+key+" "+String.valueOf(top.get(key))+", ");
+					sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
 					i++;
 					if(i>10) break;
 					
