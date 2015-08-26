@@ -68,7 +68,7 @@ public class SamzaTestCount implements StreamTask, InitableTask {
         if (totalFlows == 1) {
 		int testNumber = myConf.getInt("securitycloud.test.number");
         	start = System.currentTimeMillis();
-		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
+		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start + ", task: " + TaskCoordinator.RequestScope.CURRENT_TASK);
 		
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
