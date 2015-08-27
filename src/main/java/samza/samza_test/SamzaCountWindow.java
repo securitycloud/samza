@@ -168,7 +168,8 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
 
 				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
 				//String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: "+sb.toString();
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: ne v testovacim rezimu, pro IP 141.57.244.116 je paketu:" + String.valueOf(top.get("141.57.244.116
+				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: ne v testovacim rezimu, pro IP 141.57.244.116 je paketu:" + String.valueOf(top.get("141.57.244.116"));
+				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
 				cleanVars();
 			}
 			if(totalFlows > windowLimit){
