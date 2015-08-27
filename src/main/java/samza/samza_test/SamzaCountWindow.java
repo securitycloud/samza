@@ -50,274 +50,280 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
     private long timeEnd;
     private long startLast;
     private int startLastFlows;
-    
+
     @Override
     public void init(Config config, TaskContext context) {
-	this.totalFlows = 0;
-	this.packets = 0;
-	this.startLast = 0;
-	this.startLastFlows = 0;
-	this.filtered = 0;
-	this.timeStart = Long.MAX_VALUE;
-	this.timeEnd = 0;
-	this.mapper = new ObjectMapper();
-	this.conf = config;
-	this.top = new HashMap<>();
-	this.windowLimit = config.getInt("securitycloud.test.windowLimit");
+        this.totalFlows = 0;
+        this.packets = 0;
+        this.startLast = 0;
+        this.startLastFlows = 0;
+        this.filtered = 0;
+        this.timeStart = Long.MAX_VALUE;
+        this.timeEnd = 0;
+        this.mapper = new ObjectMapper();
+        this.conf = config;
+        this.top = new HashMap<>();
+        this.windowLimit = config.getInt("securitycloud.test.windowLimit");
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
-	try {
-		String input = mapper.readValue((byte[]) envelope.getMessage(), String.class);
-		String[] parts = input.split(" ");
+        try {
+            String input = mapper.readValue((byte[]) envelope.getMessage(), String.class);
+            String[] parts = input.split(" ");
 
-		long timestamp = Long.parseLong(parts[1]);
-    		//long timestamp = System.currentTimeMillis();
-		if(timestamp < timeStart){
-			timeStart = timestamp;
-		}
-		if(timestamp > timeEnd){
-			timeEnd = timestamp;
-		}
+            long timestamp = Long.parseLong(parts[1]);
+            //long timestamp = System.currentTimeMillis();
+            if (timestamp < timeStart) {
+                timeStart = timestamp;
+            }
+            if (timestamp > timeEnd) {
+                timeEnd = timestamp;
+            }
 
-		if(Integer.parseInt(parts[2]) == 0){
-			startLast = timestamp;
-			startLastFlows = totalFlows;
-		}		
+            if (Integer.parseInt(parts[2]) == 0) {
+                startLast = timestamp;
+                startLastFlows = totalFlows;
+            }
 
 ////////////////////////////////////////          EMPTY FRAMEWORK          //////////////////////////////////////// 
-		if(parts[0].equals("empty")){
-			totalFlows += Integer.parseInt(parts[2]);
-			if(totalFlows == windowLimit){
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+            if (parts[0].equals("empty")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                if (totalFlows == windowLimit) {
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :), prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
 
 ////////////////////////////////////////          TEST FILTER          //////////////////////////////////////// 
-		if(parts[0].equals("filter")){
-			totalFlows += Integer.parseInt(parts[2]);
-			filtered += Integer.parseInt(parts[3]);
-			String IP = parts[4];
-			if(totalFlows == windowLimit){
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), IP adresa " + IP + " mela " + String.valueOf(filtered) +" toku. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+            if (parts[0].equals("filter")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                filtered += Integer.parseInt(parts[3]);
+                String IP = parts[4];
+                if (totalFlows == windowLimit) {
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :), IP adresa " + IP + " mela " + String.valueOf(filtered) + " toku. Prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
 
 ////////////////////////////////////////          TEST COUNT          //////////////////////////////////////// 
-		if(parts[0].equals("count")){
-			totalFlows += Integer.parseInt(parts[2]);
-			packets += Integer.parseInt(parts[3]);
-			String IP = parts[4];
-			if(totalFlows == windowLimit){
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :), IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				speed = (windowLimit-startLastFlows)/(timeEnd-startLast);
-				msg = "Mereni od startu posledniho: , IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+            if (parts[0].equals("count")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                packets += Integer.parseInt(parts[3]);
+                String IP = parts[4];
+                if (totalFlows == windowLimit) {
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :), IP adresa " + IP + " mela " + String.valueOf(packets) + " paketu. Prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                            //speed = (windowLimit-startLastFlows)/(timeEnd-startLast);
+                    //msg = "Mereni od startu posledniho: , IP adresa " + IP + " mela " + String.valueOf(packets) +" paketu. Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu";
+                    //collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
 
 ////////////////////////////////////////          TEST AGGREGATE          //////////////////////////////////////// 
-		if(parts[0].equals("aggregate")){
-			totalFlows += Integer.parseInt(parts[2]);
-			for(String field : parts){
-				String[] divided = field.split("=");				
-				if(divided.length > 1){
-					String dstIP = divided[0];
-					int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length()-1));
-   				        if (top.containsKey(dstIP)) {
-   				             int packetsFromMap = top.get(dstIP);
-   				             top.put(dstIP, packetsFromMap + packetsCount);
-    				        } else {
-       				             top.put(dstIP, packetsCount);
-          				}
-				}
-			}
-			if(totalFlows == windowLimit){				
-				Iterator<String> it = top.keySet().iterator();
-				StringBuilder sb = new StringBuilder();
-				while(it.hasNext()){
-					String key = it.next();
-					sb.append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
-				}				
+            if (parts[0].equals("aggregate")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                for (String field : parts) {
+                    String[] divided = field.split("=");
+                    if (divided.length > 1) {
+                        String dstIP = divided[0];
+                        int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
+                        if (top.containsKey(dstIP)) {
+                            int packetsFromMap = top.get(dstIP);
+                            top.put(dstIP, packetsFromMap + packetsCount);
+                        } else {
+                            top.put(dstIP, packetsCount);
+                        }
+                    }
+                }
+                if (totalFlows == windowLimit) {
+                    Iterator<String> it = top.keySet().iterator();
+                    StringBuilder sb = new StringBuilder();
+                    while (it.hasNext()) {
+                        String key = it.next();
+                        sb.append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
+                    }
 
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				//String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: "+sb.toString();
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: ne v testovacim rezimu, pro IP 141.57.244.116 je paketu:" + String.valueOf(top.get("141.57.244.116"));
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    //String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis agregace: "+sb.toString();
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :). Prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu. Vypis agregace: ne v testovacim rezimu, pro IP 141.57.244.116 je paketu:" + String.valueOf(top.get("141.57.244.116"));
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
 
 ////////////////////////////////////////          TEST TOP N          //////////////////////////////////////// 
-		if(parts[0].equals("topn")){
-			totalFlows += Integer.parseInt(parts[2]);
-			for(String field : parts){
-				String[] divided = field.split("=");				
-				if(divided.length > 1){
-					String dstIP = divided[0];
-					int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length()-1));
-   				        if (top.containsKey(dstIP)) {
-   				             int packetsFromMap = top.get(dstIP);
-   				             top.put(dstIP, packetsFromMap + packetsCount);
-    				        } else {
-       				             top.put(dstIP, packetsCount);
-          				}
-				}
-			}
-			if(totalFlows == windowLimit){
-				ValueComparator bvc = new ValueComparator(top);
-				TreeMap<String, Integer> sorted = new TreeMap<>(bvc);
-				sorted.putAll(top);
-				Iterator<String> it = sorted.keySet().iterator();
-				int i = 1;
-				StringBuilder sb = new StringBuilder();
-				while(it.hasNext()){
-					String key = it.next();
-					sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
-					i++;
-					if(i>10) break;
-					
-				}				
+            if (parts[0].equals("topn")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                for (String field : parts) {
+                    String[] divided = field.split("=");
+                    if (divided.length > 1) {
+                        String dstIP = divided[0];
+                        int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
+                        if (top.containsKey(dstIP)) {
+                            int packetsFromMap = top.get(dstIP);
+                            top.put(dstIP, packetsFromMap + packetsCount);
+                        } else {
+                            top.put(dstIP, packetsCount);
+                        }
+                    }
+                }
+                if (totalFlows == windowLimit) {
+                    ValueComparator bvc = new ValueComparator(top);
+                    TreeMap<String, Integer> sorted = new TreeMap<>(bvc);
+                    sorted.putAll(top);
+                    Iterator<String> it = sorted.keySet().iterator();
+                    int i = 1;
+                    StringBuilder sb = new StringBuilder();
+                    while (it.hasNext()) {
+                        String key = it.next();
+                        sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
+                        i++;
+                        if (i > 10) {
+                            break;
+                        }
 
-				if(timeEnd < System.currentTimeMillis()){
-					timeEnd = System.currentTimeMillis();
-				}				
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis TOP 10: "+sb.toString();
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+                    }
+
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :). Prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu. Vypis TOP 10: " + sb.toString();
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
 
 ////////////////////////////////////////          TEST SYN SCAN          //////////////////////////////////////// 
-		if(parts[0].equals("scan")){
-			totalFlows += Integer.parseInt(parts[2]);
-			for(String field : parts){
-				String[] divided = field.split("=");				
-				if(divided.length > 1){
-					String dstIP = divided[0];
-					int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length()-1));
-   				        if (top.containsKey(dstIP)) {
-   				             int packetsFromMap = top.get(dstIP);
-   				             top.put(dstIP, packetsFromMap + packetsCount);
-    				        } else {
-       				             top.put(dstIP, packetsCount);
-          				}
-				}
-			}
-			if(totalFlows == windowLimit){
-				ValueComparator bvc = new ValueComparator(top);
-				TreeMap<String, Integer> sorted = new TreeMap<>(bvc);
-				sorted.putAll(top);
-				Iterator<String> it = sorted.keySet().iterator();
-				int i = 1;
-				StringBuilder sb = new StringBuilder();
-				while(it.hasNext()){
-					String key = it.next();
-					sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
-					i++;
-					if(i>10) break;
-					
-				}	
-			
-				if(timeEnd < System.currentTimeMillis()){
-					timeEnd = System.currentTimeMillis();
-				}
-				long speed = windowLimit/(timeEnd-timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
-				String msg = "CountWindow se dopocital na hodnotu "+String.valueOf(windowLimit)+" toku :). Prumerna rychlost zpracovani byla "+String.valueOf(speed)+"k toku za vterinu. Vypis TOP 10: "+sb.toString();
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}
-			if(totalFlows > windowLimit){
-				String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
-				collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
-				cleanVars();
-			}					
-		}
+            if (parts[0].equals("scan")) {
+                totalFlows += Integer.parseInt(parts[2]);
+                for (String field : parts) {
+                    String[] divided = field.split("=");
+                    if (divided.length > 1) {
+                        String dstIP = divided[0];
+                        int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
+                        if (top.containsKey(dstIP)) {
+                            int packetsFromMap = top.get(dstIP);
+                            top.put(dstIP, packetsFromMap + packetsCount);
+                        } else {
+                            top.put(dstIP, packetsCount);
+                        }
+                    }
+                }
+                if (totalFlows == windowLimit) {
+                    ValueComparator bvc = new ValueComparator(top);
+                    TreeMap<String, Integer> sorted = new TreeMap<>(bvc);
+                    sorted.putAll(top);
+                    Iterator<String> it = sorted.keySet().iterator();
+                    int i = 1;
+                    StringBuilder sb = new StringBuilder();
+                    while (it.hasNext()) {
+                        String key = it.next();
+                        sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
+                        i++;
+                        if (i > 10) {
+                            break;
+                        }
 
-		
-	} catch (IOException | NumberFormatException e) {
+                    }
+
+                    long postProcessingTime = System.currentTimeMillis();
+                    if (timeEnd < postProcessingTime) {
+                        timeEnd = postProcessingTime;
+                    }
+                    long speed = windowLimit / (timeEnd - timeStart); //rychlost v tocich za milisekundu = prumer v tisicich toku za vterinu
+                    String msg = "CountWindow se dopocital na hodnotu " + String.valueOf(windowLimit) + " toku :). Prumerna rychlost zpracovani byla " + String.valueOf(speed) + "k toku za vterinu. Vypis TOP 10: " + sb.toString();
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+                if (totalFlows > windowLimit) {
+                    String msg = "Chyba zpracovani, soucet toku nesedi do count okna!";
+                    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), mapper.writeValueAsBytes(msg)));
+                    cleanVars();
+                }
+            }
+
+        } catch (IOException | NumberFormatException e) {
             Logger.getLogger(SamzaCountWindow.class.getName()).log(Level.SEVERE, null, e);
         }
     }
 
-  private void cleanVars(){
-	totalFlows = 0;
-	packets = 0;
-	filtered = 0;
-	startLastFlows = 0;
-	startLast = 0;
-	top = new HashMap<>();
-	this.timeStart = Long.MAX_VALUE;
-	this.timeEnd = 0;
-  }
+    private void cleanVars() {
+        totalFlows = 0;
+        packets = 0;
+        filtered = 0;
+        startLastFlows = 0;
+        startLast = 0;
+        top = new HashMap<>();
+        this.timeStart = Long.MAX_VALUE;
+        this.timeEnd = 0;
+    }
 }
 
-class ValueComparator implements Comparator<String>{
-	Map<String, Integer> base;
-	public ValueComparator(Map<String, Integer> base){
-		this.base = base;
-	}
-	public int compare(String a, String b){
-		if(base.get(a) >= base.get(b)){
-			return -1;
-		} else {
-			return 1;
-		}
-	}
+class ValueComparator implements Comparator<String> {
+
+    Map<String, Integer> base;
+
+    public ValueComparator(Map<String, Integer> base) {
+        this.base = base;
+    }
+
+    @Override
+    public int compare(String a, String b) {
+        if (base.get(a) >= base.get(b)) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
