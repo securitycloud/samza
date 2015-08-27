@@ -32,12 +32,15 @@ import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.samza.storage.kv.KeyValueIterator;
+import org.apache.samza.storage.kv.KeyValueStore;
+import org.apache.samza.storage.kv.Entry;
 
 public class SamzaTestScan implements StreamTask, InitableTask {
 
     private int totalFlows = 0;
     private Map<String, String> countsEnd = new HashMap<>();
-    private Map<String, Integer> top = new HashMap<>();
+    //private Map<String, Integer> top = new HashMap<>();
     private ObjectMapper mapper;
     private int windowSize;
     private int windowLimit;
@@ -47,6 +50,8 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 
     private Config myConf;
     
+    private KeyValueStore<String, Integer> store;
+    
     @Override
     public void init(Config config, TaskContext context) {
 	this.totalFlows = 0;
@@ -54,6 +59,7 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 	this.mapper = new ObjectMapper();
 	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
         this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
+        this.store = (KeyValueStore<String, Integer>) context.getStore("samza-store");
     }
 
     @SuppressWarnings("unchecked")
@@ -84,11 +90,11 @@ public class SamzaTestScan implements StreamTask, InitableTask {
             String srcIP = flow.getSrc_ip_addr();
             String flags = flow.getFlags();
             if (flags.equals("....S.")){
-              if(top.containsKey(srcIP)) {
-                  int flowsFromMap = top.get(srcIP);
-                  top.put(srcIP, flowsFromMap + 1);
+              if(store.get("totalFlows") != null) {
+                  int flowsFromMap = store.get("totalFlows");
+                  store.put(srcIP, new Integer(flowsFromMap + 1));
               } else {
-                  top.put(srcIP, 1);
+                  store.put(srcIP, new Integer(1));
               }
             }
         } catch (Exception e) {
@@ -105,13 +111,19 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 		try{
 			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
-			myArray = mapper.writeValueAsBytes("scan " + String.valueOf(currentTime) + " " + String.valueOf(windowSize) + " " + top.toString());
+                        KeyValueIterator<String, Integer> it = store.all();
+                        StringBuilder sb = new StringBuilder();
+                        while (it.hasNext()) {
+                            Entry<String, Integer> entry = it.next();
+                            sb.append(entry.getKey()).append("=").append(entry.getValue()).append(" ");
+                            store.delete(entry.getKey());
+                        }
+			myArray = mapper.writeValueAsBytes("scan " + String.valueOf(currentTime) + " " + String.valueOf(windowSize) + " " + sb.toString());
 			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
 		} catch (Exception e) {
             		Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
         	}
                 countsEnd = new HashMap<>();
-		top = new HashMap<>();
         }             
     }
 }
