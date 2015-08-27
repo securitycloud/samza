@@ -160,13 +160,16 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
                 for (String field : parts) {
                     String[] divided = field.split("=");
                     if (divided.length > 1) {
-                        String dstIP = divided[0];
+                        String IP = divided[0];
+                        if(IP.charAt(0) == '{'){
+                            IP = IP.substring(1);
+                        }
                         int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
-                        if (top.containsKey(dstIP)) {
-                            int packetsFromMap = top.get(dstIP);
-                            top.put(dstIP, packetsFromMap + packetsCount);
+                        if (top.containsKey(IP)) {
+                            int packetsFromMap = top.get(IP);
+                            top.put(IP, packetsFromMap + packetsCount);
                         } else {
-                            top.put(dstIP, packetsCount);
+                            top.put(IP, packetsCount);
                         }
                     }
                 }
@@ -201,13 +204,16 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
                 for (String field : parts) {
                     String[] divided = field.split("=");
                     if (divided.length > 1) {
-                        String dstIP = divided[0];
+                        String IP = divided[0];
+                        if(IP.charAt(0) == '{'){
+                            IP = IP.substring(1);
+                        }
                         int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
-                        if (top.containsKey(dstIP)) {
-                            int packetsFromMap = top.get(dstIP);
-                            top.put(dstIP, packetsFromMap + packetsCount);
+                        if (top.containsKey(IP)) {
+                            int packetsFromMap = top.get(IP);
+                            top.put(IP, packetsFromMap + packetsCount);
                         } else {
-                            top.put(dstIP, packetsCount);
+                            top.put(IP, packetsCount);
                         }
                     }
                 }
@@ -250,13 +256,16 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
                 for (String field : parts) {
                     String[] divided = field.split("=");
                     if (divided.length > 1) {
-                        String dstIP = divided[0];
+                        String IP = divided[0];
+                        if(IP.charAt(0) == '{'){
+                            IP = IP.substring(1);
+                        }
                         int packetsCount = Integer.parseInt(divided[1].substring(0, divided[1].length() - 1));
-                        if (top.containsKey(dstIP)) {
-                            int packetsFromMap = top.get(dstIP);
-                            top.put(dstIP, packetsFromMap + packetsCount);
+                        if (top.containsKey(IP)) {
+                            int packetsFromMap = top.get(IP);
+                            top.put(IP, packetsFromMap + packetsCount);
                         } else {
-                            top.put(dstIP, packetsCount);
+                            top.put(IP, packetsCount);
                         }
                     }
                 }
@@ -271,7 +280,7 @@ public class SamzaCountWindow implements StreamTask, InitableTask {
                         String key = it.next();
                         sb.append(String.valueOf(i)).append(" ").append(key).append(" ").append(String.valueOf(top.get(key))).append(", ");
                         i++;
-                        if (i > 10) {
+                        if (i > 100) {
                             break;
                         }
 
