@@ -83,12 +83,12 @@ public class SamzaTestAggregate implements StreamTask, InitableTask {
 
 	try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String dstIP = flow.getDst_ip_addr();
-            if (top.containsKey(dstIP)) {
-                int packetsFromMap = top.get(dstIP);
-                top.put(dstIP, packetsFromMap + flow.getPackets());
+            String srcIP = flow.getSrc_ip_addr();
+            if (top.containsKey(srcIP)) {
+                int packetsFromMap = top.get(srcIP);
+                top.put(srcIP, packetsFromMap + flow.getPackets());
             } else {
-                top.put(dstIP, flow.getPackets());
+                top.put(srcIP, flow.getPackets());
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestAggregate.class.getName()).log(Level.SEVERE, null, e);

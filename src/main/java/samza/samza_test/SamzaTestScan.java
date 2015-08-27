@@ -81,14 +81,14 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 
         try {
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
-            String dstIP = flow.getDst_ip_addr();
+            String srcIP = flow.getSrc_ip_addr();
             String flags = flow.getFlags();
             if (flags.equals("....S.")){
-              if(top.containsKey(dstIP)) {
-                  int flowsFromMap = top.get(dstIP);
-                  top.put(dstIP, flowsFromMap + 1);
+              if(top.containsKey(srcIP)) {
+                  int flowsFromMap = top.get(srcIP);
+                  top.put(srcIP, flowsFromMap + 1);
               } else {
-                  top.put(dstIP, 1);
+                  top.put(srcIP, 1);
               }
             }
         } catch (Exception e) {
