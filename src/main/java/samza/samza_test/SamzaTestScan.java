@@ -32,6 +32,7 @@ import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Iterator;
 import org.apache.samza.storage.kv.KeyValueIterator;
 import org.apache.samza.storage.kv.KeyValueStore;
 import org.apache.samza.storage.kv.Entry;
@@ -40,7 +41,7 @@ public class SamzaTestScan implements StreamTask, InitableTask {
 
     private int totalFlows = 0;
     private Map<String, String> countsEnd = new HashMap<>();
-    //private Map<String, Integer> top = new HashMap<>();
+    private Map<String, Integer> top = new HashMap<>();
     private ObjectMapper mapper;
     private int windowSize;
     private int windowLimit;
@@ -49,81 +50,84 @@ public class SamzaTestScan implements StreamTask, InitableTask {
     private Long currentTime;
 
     private Config myConf;
-    
-    private KeyValueStore<String, Integer> store;
-    
+
     @Override
     public void init(Config config, TaskContext context) {
-	this.totalFlows = 0;
-	this.myConf = config;
-	this.mapper = new ObjectMapper();
-	this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
+        this.totalFlows = 0;
+        this.myConf = config;
+        this.mapper = new ObjectMapper();
+        this.windowSize = config.getInt("securitycloud.test.countWindow.batchSize");
         this.windowLimit = config.getInt("securitycloud.test.countWindow.limit");
-        this.store = (KeyValueStore<String, Integer>) context.getStore("samza-store");
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
-	totalFlows++;
-	if(totalFlows == windowLimit){
-		coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
-	}
+        totalFlows++;
+        if (totalFlows == windowLimit) {
+            coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
+        }
         if (totalFlows == 1) {
-		String testNumber = myConf.get("securitycloud.test.name");
-        	start = System.currentTimeMillis();
-		countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
-		
-		try{
-			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
-			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
-			myArray = mapper.writeValueAsBytes("scan " + String.valueOf(start) + " " + String.valueOf(0));
-			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
-		} catch (Exception e) {
-            		Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
-        	}
-                countsEnd = new HashMap<>();
-        }  
+            String testNumber = myConf.get("securitycloud.test.name");
+            start = System.currentTimeMillis();
+            countsEnd.put("Log:", "zacatek zpracovani testu " + testNumber + ": " + start);
+
+            try {
+                byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+                myArray = mapper.writeValueAsBytes("scan " + String.valueOf(start) + " " + String.valueOf(0));
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
+            } catch (Exception e) {
+                Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
+            }
+            countsEnd = new HashMap<>();
+        }
 
         try {
+            if (totalFlows % 200_000 == 0) {
+                cleanMap();
+            }
             Flow flow = mapper.readValue((byte[]) envelope.getMessage(), Flow.class);
             String srcIP = flow.getSrc_ip_addr();
             String flags = flow.getFlags();
-            if (flags.equals("....S.")){
-              if(store.get("totalFlows") != null) {
-                  int flowsFromMap = store.get("totalFlows");
-                  store.put(srcIP, new Integer(flowsFromMap + 1));
-              } else {
-                  store.put(srcIP, new Integer(1));
-              }
+            if (flags.equals("....S.")) {
+                if (top.containsKey(srcIP)) {
+                    int flowsFromMap = top.get(srcIP);
+                    top.put(srcIP, flowsFromMap + 1);
+                } else {
+                    top.put(srcIP, 1);
+                }
             }
         } catch (Exception e) {
             Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
-        } 
-    
-        if (totalFlows % windowSize == 0) {
-		currentTime = System.currentTimeMillis();
-		String msg = "V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize/(currentTime - start) + "k toku za vterinu";
-		start = currentTime;
+        }
 
-		countsEnd.put("totalFlows", String.valueOf(totalFlows));
-		countsEnd.put("Log:", msg);
-		try{
-			byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
-			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
-                        KeyValueIterator<String, Integer> it = store.all();
-                        StringBuilder sb = new StringBuilder();
-                        while (it.hasNext()) {
-                            Entry<String, Integer> entry = it.next();
-                            sb.append(entry.getKey()).append("=").append(entry.getValue()).append(" ");
-                            store.delete(entry.getKey());
-                        }
-			myArray = mapper.writeValueAsBytes("scan " + String.valueOf(currentTime) + " " + String.valueOf(windowSize) + " " + sb.toString());
-			collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
-		} catch (Exception e) {
-            		Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
-        	}
-                countsEnd = new HashMap<>();
-        }             
+        if (totalFlows % windowSize == 0) {
+            currentTime = System.currentTimeMillis();
+            String msg = "V case: " + currentTime + ", rychlost na tomto uzlu: " + windowSize / (currentTime - start) + "k toku za vterinu";
+            start = currentTime;
+
+            countsEnd.put("totalFlows", String.valueOf(totalFlows));
+            countsEnd.put("Log:", msg);
+            try {
+                byte[] myArray = mapper.writeValueAsBytes(countsEnd.toString());
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-stats"), myArray));
+                myArray = mapper.writeValueAsBytes("scan " + String.valueOf(currentTime) + " " + String.valueOf(windowSize) + " " + top.toString());
+                collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-count-window"), myArray));
+            } catch (Exception e) {
+                Logger.getLogger(SamzaTestScan.class.getName()).log(Level.SEVERE, null, e);
+            }
+            countsEnd = new HashMap<>();
+        }
+    }
+
+    private void cleanMap() {
+        Iterator it = top.entrySet().iterator();
+        while(it.hasNext()){
+            Map.Entry<String, Integer> pair = (Map.Entry<String, Integer>) it.next();
+            if(pair.getValue() == 1){
+                it.remove();
+            }
+        }
     }
 }
