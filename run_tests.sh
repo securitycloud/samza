@@ -34,7 +34,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_empty"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
@@ -60,7 +60,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_filter"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
@@ -86,7 +86,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_count"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
@@ -112,7 +112,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_aggregate"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
@@ -138,7 +138,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_topN"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
@@ -164,7 +164,7 @@ do
   sleep 60
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_scan"
   sleep 30
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
