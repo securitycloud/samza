@@ -16,35 +16,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
+/home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
+cd /home/securitycloud/samza
 
-# export vars
-export JAVA_HOME=/usr/lib/jvm/java-8-oracle
-export HADOOP_YARN_HOME=/root/hadoop-2.4.0
-export HADOOP_CONF_DIR=$HADOOP_YARN_HOME/conf
+for var in 0 1
+do
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
+  sleep 10
 
-# prepare directory structure in tmp and copy samza files there
-mkdir /tmp/samza
-mkdir /tmp/samza/deploy
-tar -xvf /root/samza/hello-samza-0.8.0-dist.tar.gz -C /tmp/samza/deploy/samza
+  # start count window 
+  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
+  sleep 10
 
-# start YARN
-/root/hadoop-2.4.0/sbin/start-yarn.sh
+  # start test
+  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
+  sleep 60
 
-# now you must make sure that SimpleHTTPServer is RUNNING and package is available
-# for other machines on http://10.16.31.214:8000/hello-samza-0.8.0-dist.tar.gz
-# If server is not runninig, start him using screen:
-#              cd /root/samza
-#              python -m SimpleHTTPServer & 
+  # send data to kafka
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh"
+  sleep 30
+done
 
-# run count window task
-/tmp/samza/deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=/tmp/samza/deploy/samza/config/count_window.properties
+/home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
 
-sleep 10
 
-# run test
-/tmp/samza/deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=/tmp/samza/deploy/samza/config/samza_test.properties
-
-sleep 120
-
-# stop YARN after test
-/root/hadoop-2.4.0/sbin/stop-yarn.sh
