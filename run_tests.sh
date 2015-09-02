@@ -18,7 +18,7 @@
 
 #######################################################   START ##################################################################################
 cd /home/securitycloud/samza
-ssh 100.64.25.102 "cd ~/samza/target ; python -m SimpleHTTPServer"
+#ssh 100.64.25.102 "cd ~/samza/target ; python -m SimpleHTTPServer"
 
 #######################################################   TEST EMPTY ##################################################################################
 for var in {1..3}
@@ -34,7 +34,7 @@ do
   # start test
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_empty.properties
   sleep 80
-
+  echo "konec spani, spoustim test"
   # send data to kafka
   ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_empty"
   sleep 80
