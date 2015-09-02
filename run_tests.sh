@@ -17,57 +17,62 @@
 # under the License.
 
 #######################################################   TEST EMPTY ##################################################################################
-/home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
+#/home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
 cd /home/securitycloud/samza
 
-for var in {1..5}
-do
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 10
+#for var in {1..3}
+#do
+#  /home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh  
+#  ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
+#  sleep 25
 
-  # start count window 
-  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
-  sleep 10
+#  start count window 
+#  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
+#  sleep 10
 
   # start test
-  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_empty.properties
-  sleep 60
+#  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_empty.properties
+#  sleep 80
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_empty"
-  sleep 30
-done
-ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-sleep 10
-/home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
-sleep 20
+#  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_empty"
+#  sleep 80
+#  /home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
+#  sleep 20
+#done
+#ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
+#sleep 25
+#/home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
+#sleep 20
+
+#exit
+
 
 #######################################################   TEST FILTER  ##################################################################################
-/home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
-cd /home/securitycloud/samza
-
-for var in {1..5}
+for var in {1..3}
 do
+  /home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
   ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 10
+  sleep 30
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
   sleep 10
 
   # start test
-  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_filter.properties
-  sleep 60
+  ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_count.properties
+  sleep 80
 
   # send data to kafka
-  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_filter"
-  sleep 30
+  ssh 100.64.25.106 "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_count"
+  sleep 120
+  /home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
+  sleep 20
 done
 ssh 100.64.25.106 "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-sleep 10
-/home/securitycloud/hadoop-2.7.1/sbin/stop-yarn.sh
-sleep 20
+sleep 30
 
+exit
 #######################################################   TEST COUNT  ##################################################################################
 /home/securitycloud/hadoop-2.7.1/sbin/start-yarn.sh
 cd /home/securitycloud/samza
