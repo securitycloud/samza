@@ -61,9 +61,9 @@ public class SamzaTestTopN implements StreamTask, InitableTask {
     @Override
     public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
         totalFlows++;
-        if (totalFlows == windowLimit) {
-            coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
-        }
+        //if (totalFlows == windowLimit) {
+        //    coordinator.shutdown(TaskCoordinator.RequestScope.CURRENT_TASK);
+        //}
         if (totalFlows == 1) {
             String testNumber = myConf.get("securitycloud.test.name");
             start = System.currentTimeMillis();
