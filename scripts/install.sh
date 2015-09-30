@@ -1,6 +1,7 @@
 #!/bin/bash
 
 master="10.16.31.214"
+kafka="10.16.31.201"
 
 # if you want master to serve as slave, you must put i here also
 slave1="10.16.31.211"
@@ -24,7 +25,7 @@ echo -e "$slave1\n$slave2\n$slave3\n$slave4\n$slave5" > conf/slaves
 cd ..
 
 # set master into configuration
-sed -i -- "s/999.999.999.999/$master" yarn-site.xml
+sed -i -- "s/999.999.999.999/$master/" yarn-site.xml
 
 # copy prepared files to Hadoop
 # you must configure RAM and processor cores available on each machine, defaults are 8GB and 4 cores
@@ -52,7 +53,25 @@ scp -r . $slave4:$HADOOP_SLAVE_HOME
 scp -r . $slave5:$HADOOP_SLAVE_HOME
 
 # Hadoop is ready
+               
+# configure as much as possible               
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_empty.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_empty.properties
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_filter.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_filter.properties
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_count.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_count.properties
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_aggregate.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_aggregate.properties
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_topN.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_topN.properties
+sed -i -- "s/999.999.999.999/$master/" deploy/samza/config/samza_test_scan.properties
+sed -i -- "s/888.888.888.888/$kafka/" deploy/samza/config/samza_test_scan.properties
 
 cd ..
+mvn clean package
 mkdir -p samza/deploy/samza
 tar -xvf ./hello-samza-0.8.0-dist.tar.gz -C samza/deploy/samza
+
+cd samza
+
