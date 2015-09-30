@@ -24,7 +24,7 @@ cd ..
 master="10.16.31.214"
 kafka="10.16.31.201"  
 
-#mvn clean package
+mvn clean package
 mkdir -p deploy/samza
 tar -xvf ./target/hello-samza-0.8.0-dist.tar.gz -C deploy/samza
 
