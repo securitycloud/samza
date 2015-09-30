@@ -19,7 +19,7 @@
 #######################################################   START ##################################################################################
 #cd /home/securitycloud/samza
 kafkaServer="10.16.31.201"
-cd samza/target 
+cd ../target 
 python -m SimpleHTTPServer > /dev/null 2>&1 &
 cd ..
 
@@ -27,8 +27,7 @@ cd ..
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh  
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 25
+  sleep 10
 
 #  start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -38,9 +37,6 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_empty.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_empty"
-  sleep 80
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
   sleep 20
 done
@@ -49,8 +45,7 @@ done
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 30
+  sleep 10
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -60,9 +55,6 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_filter.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_filter"
-  sleep 120
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
   sleep 20
 done
@@ -71,8 +63,7 @@ done
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 30
+  sleep 10
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -82,9 +73,6 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_count.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_count"
-  sleep 120
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
   sleep 20
 done
@@ -93,8 +81,7 @@ done
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 30
+  sleep 10
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -104,9 +91,6 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_aggregate.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_aggregate"
-  sleep 120
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
   sleep 20
 done
@@ -115,8 +99,7 @@ done
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 30
+  sleep 10
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -126,9 +109,6 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_topN.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_topN"
-  sleep 120
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
   sleep 20
 done
@@ -137,8 +117,7 @@ done
 for var in {1..3}
 do
   $HADOOP_YARN_HOME/sbin/start-yarn.sh
-  ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-  sleep 30
+  sleep 10
 
   # start count window 
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/count_window.properties
@@ -148,23 +127,18 @@ do
   ./deploy/samza/bin/run-job.sh --config-factory=org.apache.samza.config.factories.PropertiesConfigFactory --config-path=file://$PWD/deploy/samza/config/samza_test_scan.properties
   sleep 80
 
-  # send data to kafka
-  ssh $kafkaServer "cd ~/ekafsender ; ./run.sh >> /tmp/results_samza_scan"
-  sleep 120
   $HADOOP_YARN_HOME/sbin/stop-yarn.sh
-  sleep 20
 done
 
 #######################################################   CLEANUP  ##################################################################################
-ssh $kafkaServer "cd ~/ekafsender ; ./reset_kafka_topics.sh"
-sleep 30
+
 pkill -f "python -m SimpleHTTPServer"
 
 # download results
-scp $kafkaServer:/tmp/results_samza_empty ./results_samza_empty
-scp $kafkaServer:/tmp/results_samza_filter ./results_samza_filter
-scp $kafkaServer:/tmp/results_samza_count ./results_samza_count
-scp $kafkaServer:/tmp/results_samza_aggregate ./results_samza_aggregate
-scp $kafkaServer:/tmp/results_samza_topN ./results_samza_topN 
-scp $kafkaServer:/tmp/results_samza_scan ./results_samza_scan
+#scp $kafkaServer:/tmp/results_samza_empty ./results_samza_empty
+#scp $kafkaServer:/tmp/results_samza_filter ./results_samza_filter
+#scp $kafkaServer:/tmp/results_samza_count ./results_samza_count
+#scp $kafkaServer:/tmp/results_samza_aggregate ./results_samza_aggregate
+#scp $kafkaServer:/tmp/results_samza_topN ./results_samza_topN 
+#scp $kafkaServer:/tmp/results_samza_scan ./results_samza_scan
 
